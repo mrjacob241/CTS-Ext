@@ -1,16 +1,16 @@
 % author: Giuseppe Giacopelli
-% pre-print: A FULL-SCALE AGENT-BASED MODEL OF LOMBARDY
-% COVID-19 OUTBREAK TO EXPLORE SOCIAL NETWORKS CONNECTIVITY
+% pre-print: A full-scale agent-based model of Lombardy COVID-19 dynamics 
+% to explore social networks connectivity and vaccine impact on epidemic
 % license: GPL-3.0
 
 clear all
 close all
 
 %Set current mode
-%mode='st'; %standard
-%mode='ld'; %lock down
-%mode='2m'; %2 meters
-mode='fl';
+mode='fl'; header='Descent fitting'; %falling
+%mode='vc'; header='Vaccine scenario'; %vaccine
+
+vpd=10^6; %vaccines per day
 
 spath=['Sims/sim_f_',mode];
 if ~exist(spath, 'dir')
@@ -70,6 +70,7 @@ days=[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15];
 tdays=[0:Nit]/FPD;
 edays=5*7;
 eframes=edays*FPD;
+vpframe=round(vpd/FPD);
 %phist=fliplr(kron(DNC(1:edays)/sum(DNC(1:edays)),ones(1,FPD)/FPD));
 phist=ones(1,eframes)/eframes;
 dels=fliplr([0:(eframes-1)]/FPD);
@@ -111,7 +112,7 @@ D=zeros(N,1,'logical');
 dT=zeros(N,1,'double');
 Check=zeros(Nit,1);
 
-if or(mode=='ld',mode=='fl')
+if or(or(mode=='ld',mode=='fl'),mode=='vc')
     cdist=0.3; %lock down
     kmd=15; %lock down
 else
@@ -119,7 +120,7 @@ else
     kmd=43; %Ossertvatorio UnipolSai Lombardia: 43 Km per day
 end
 
-if or(mode=='2m',mode=='fl') 
+if or(or(mode=='2m',mode=='fl'),mode=='vc') 
     mult=0.5; %source: Physical distancing, face masks, and eye protection to
     %prevent person-to-person transmission of SARS-CoV-2 and
     %COVID-19: a systematic review and meta-analysis
@@ -174,6 +175,14 @@ vd=(kmd/40)*wblrnd(6,1.5,N,1);
 Init=Pop;
 initI=sum(I)
 
+if mode=='vc'
+    idS=find(S==1); lS=length(idS);
+    vperm=randperm(lS,round(lS*0.7));
+    idvc=idS(vperm);
+    S(idvc)=0;
+    R(idvc)=1;
+end
+    
 
 figure(10); hold on;
 hw=histogram(vd(:),50);
@@ -247,6 +256,7 @@ open(v);
 disp('writing movie...')
 h = waitbar(0,'Please wait...');
 hI=nI(1);
+hg=[];
 for i=1:Nit
     [X,Y]=meshgrid(Xp,Yp);
     if mod(Nit,FPD)==0
@@ -308,7 +318,13 @@ for i=1:Nit
     D(idT(rT(1:npD)))=1;
     R(idT(rT(npD+1:end)))=1;
     
-    hI=nI(i);
+%     if mode=='vc'
+%         idS=find(S==1); lS=length(idS);
+%         vperm=randperm(lS,vpframe);
+%         idvc=idS(vperm);
+%         S(idvc)=0;
+%         R(idvc)=1;
+%     end
     
     nS(i+1)=sum(S); nI(i+1)=sum(I); nD(i+1)=sum(D); nR(i+1)=sum(R);
     Check(i)= nS(i+1)+nI(i+1)+nD(i+1)+nR(i+1);
@@ -321,7 +337,11 @@ for i=1:Nit
     dist=dist+td;
     disp(['path length: ',num2str(mean(dist))])
     
-    figure(2); hold off;
+    if length(hg)>0
+        close(hg);
+    end
+    
+    hg=figure('units','normalized','outerposition',[0 0 1 1]);
     clf('reset')
     subplot(2,4,[1 2]); hold on;
     imagesc(Xp,Yp,Np'/CArea)
@@ -334,44 +354,60 @@ for i=1:Nit
     
     hstr=strcat(num2str((24/FPD)*floor(mod(i,FPD))),':00 CEST');
     
-    tl=[hstr,' ',dstr,' (Population ',num2str(N),')'];
+    tl=[header,': ',hstr,' ',dstr,' (Population ',num2str(N),')'];
     hold on; sgtitle(tl);
     title('Density')
     axis([0 dims(1) 0 dims(2)]);
+    axis equal
     caxis([0 1200])
     colorbar;
     colormap(gca,'parula')
+    xlabel('Km')
+    ylabel('Km')
     
     subplot(2,4,[3 4]); hold on;
     title('Infected tracking')
     imagesc(Xp,Yp,log10(NI'))
     caxis([-3 2])
-    %imagesc(Xp,Yp,NI')
-    %caxis([0 100])
     axis([0 dims(1) 0 dims(2)]);
+    axis equal
     colorbar;
     colormap(gca,'hot')
+    xlabel('Km')
+    ylabel('Km')
+    
+    sf=1/1000; 
+    slabel='thousands';
     
     subplot(2,4,5); hold on;
     title('Infected'); hold on;
-    plot([0:i]/FPD,nI(1:(i+1)),'r-');
-    plot(tdays(1:i+1),Iint(1:i+1),'--r');
+    plot([0:i]/FPD,sf*nI(1:(i+1)),'r-');
+    plot(tdays(1:i+1),sf*Iint(1:i+1),'--r');
+    ylim_curr = get(gca,'ylim'); ylim([0 ylim_curr(2)+5]);
+    ylabel(slabel)
+    xlabel('days')
     
     subplot(2,4,6); hold on;
     title('Recovered'); hold on;
-    plot([0:i]/FPD,nR(1:(i+1)),'g-');
-    plot(tdays(1:i+1),Rint(1:i+1),'--g');
+    plot([0:i]/FPD,sf*nR(1:(i+1)),'g-');
+    plot(tdays(1:i+1),sf*Rint(1:i+1),'--g');
+    ylim_curr = get(gca,'ylim'); ylim([0 ylim_curr(2)+5]);
+    ylabel(slabel)
+    xlabel('days')
     
     subplot(2,4,7); hold on;
     title('Deaths'); hold on;
-    plot([0:i]/FPD,nD(1:(i+1)),'k-');
-    plot(tdays(1:i+1),Dint(1:i+1),'--k');
+    plot([0:i]/FPD,sf*nD(1:(i+1)),'k-');
+    plot(tdays(1:i+1),sf*Dint(1:i+1),'--k');
+    ylim_curr = get(gca,'ylim'); ylim([0 ylim_curr(2)+5]);
+    ylabel(slabel)
+    xlabel('days')
     
     subplot(2,4,8); hold on;
     title('Recover Ratio'); hold on;
     plot([0:i]/FPD,nR(1:(i+1))./(nR(1:(i+1))+nD(1:(i+1))),'-b');
     plot(tdays(1:i+1),Rint(1:(i+1))./(Rint(1:(i+1))+Dint(1:(i+1))),'--b');
-    
+    ylim([0 1])
     
     if mod(i,FPD)==0
         saveas(gcf,[spath,'/day_',num2str(i/FPD),'.png'])

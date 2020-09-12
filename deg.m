@@ -1,14 +1,14 @@
 % author: Giuseppe Giacopelli
-% pre-print: A FULL-SCALE AGENT-BASED MODEL OF LOMBARDY
-% COVID-19 OUTBREAK TO EXPLORE SOCIAL NETWORKS CONNECTIVITY
+% pre-print: A full-scale agent-based model of Lombardy COVID-19 dynamics 
+% to explore social networks connectivity and vaccine impact on epidemic
 % license: GPL-3.0
 
 clear all
 close all
 
 %Set current mode
-%mode='st';
-mode='ld';
+%mode='st'; header='Standard connectivity'; %standard
+mode='ld'; header='Lock down connectivity'; %lock down
 
 Map=(rgb2gray(imread('lombardia.png'))<100);
 Ms=size(Map);
@@ -149,6 +149,7 @@ for j=1:Ll
     Conn{j}=[];
 end
 
+hg=[];
 for i=1:Nit
     [X,Y]=meshgrid(Xp,Yp);
     if mod(Nit,FPD)==0
@@ -220,7 +221,11 @@ for i=1:Nit
     dist=dist+td;
     disp(['path length: ',num2str(mean(dist))])
     
-    figure(2); hold off;
+    if length(hg)>0
+        close(hg);
+    end
+    
+    hg=figure('units','normalized','outerposition',[0 0 1 1]);
     clf('reset')
     
     subplot(2,2,1); hold on;
@@ -234,34 +239,41 @@ for i=1:Nit
     
     hstr=strcat(num2str((24/FPD)*floor(mod(i,FPD))),':00 CEST');
     
-    tl=[hstr,' ',dstr,' (Population ',num2str(N),')'];
+    tl=[header,': ',hstr,' ',dstr,' (Population ',num2str(N),')'];
     hold on; sgtitle(tl);
     title('Density')
     axis([0 dims(1) 0 dims(2)]);
+    axis equal
     caxis([0 1200])
     colorbar;
     colormap(gca,'parula')
+    xlabel('Km')
+    ylabel('Km')
     
     subplot(2,2,2); hold on;
     title('Group tracking')
     imagesc(Xp,Yp,log10(NI'))
     axis([0 dims(1) 0 dims(2)]);
+    axis equal
     caxis([-3 2])
     colorbar;
     colormap(gca,'pink')
+    xlabel('Km')
+    ylabel('Km')
     
     sd=25;
     subplot(2,2,3); hold on;
     title('Total degree')
     hd=histogram(degree,sd,'normalization','pdf');
     xlabel('degree')
+    ylabel('probability density')
     
     nd=ceil(tdays(i+1));
     subplot(2,2,4); hold on;
     title('Daily degree')
     hd=histogram(degree/nd,sd,'normalization','pdf');
     xlabel('degree')
-    
+    ylabel('probability density')
     if mod(i,FPD)==0
         saveas(gcf,[spath,'/day_',num2str(i/FPD),'.png'])
     end

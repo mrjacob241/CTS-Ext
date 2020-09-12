@@ -1,16 +1,15 @@
 % author: Giuseppe Giacopelli
-% pre-print: A FULL-SCALE AGENT-BASED MODEL OF LOMBARDY
-% COVID-19 OUTBREAK TO EXPLORE SOCIAL NETWORKS CONNECTIVITY
+% pre-print: A full-scale agent-based model of Lombardy COVID-19 dynamics 
+% to explore social networks connectivity and vaccine impact on epidemic
 % license: GPL-3.0
-
 
 clear all
 close all
 
 %Set current mode
-mode='st'; %standard
-%mode='ld'; %lock down
-%mode='2m'; %2 meters
+mode='st'; header='Outbreak fitting'; %standard
+%mode='ld'; header='Lock down scenario'; %lock down
+%mode='2m'; header='Social distancing scenario'; %2 meters
 
 spath=['Sims/sim_',mode];
 if ~exist(spath, 'dir')
@@ -240,6 +239,7 @@ open(v);
 disp('writing movie...')
 h = waitbar(0,'Please wait...');
 hI=nI(1);
+hg=[];
 for i=1:Nit
     [X,Y]=meshgrid(Xp,Yp);
     if mod(Nit,FPD)==0
@@ -314,8 +314,11 @@ for i=1:Nit
     dist=dist+td;
     disp(['path length: ',num2str(mean(dist))])
     
-    figure(2); hold off;
-    clf('reset')
+    if length(hg)>0
+        close(hg);
+    end
+    
+    hg=figure('units','normalized','outerposition',[0 0 1 1]);
     subplot(2,4,[1 2]); hold on;
     imagesc(Xp,Yp,Np'/CArea)
     
@@ -327,57 +330,76 @@ for i=1:Nit
     
     hstr=strcat(num2str((24/FPD)*floor(mod(i,FPD))),':00 CEST');
     
-    tl=[hstr,' ',dstr,' (Population ',num2str(N),')'];
+    tl=[header,': ',hstr,' ',dstr,' (Population ',num2str(N),')'];
     hold on; sgtitle(tl);
     title('Density')
     axis([0 dims(1) 0 dims(2)]);
+    axis equal
     caxis([0 1200])
     colorbar;
     colormap(gca,'parula')
+    xlabel('Km')
+    ylabel('Km')
     
     subplot(2,4,[3 4]); hold on;
     title('Infected tracking')
     imagesc(Xp,Yp,log10(NI'))
     axis([0 dims(1) 0 dims(2)]);
+    axis equal
     caxis([-3 2])
     colorbar;
     colormap(gca,'hot')
+    xlabel('Km')
+    ylabel('Km')
+    
+    sf=1/1000; 
+    slabel='thousands';
     
     subplot(2,4,5); hold on;
     title('Infected'); hold on;
-    plot([0:i]/FPD,nI(1:(i+1)),'r-');
-    plot(tdays(1:i+1),Iint(1:i+1),'--r');
+    plot([0:i]/FPD,sf*nI(1:(i+1)),'r-');
+    plot(tdays(1:i+1),sf*Iint(1:i+1),'--r');
+    ylim_curr = get(gca,'ylim'); ylim([0 ylim_curr(2)]);
     if i>9*FPD
-        up=max(max(nI(1:(i+1))),max(Iint(1:(i+1))));
-        down=min(min(nI(1:(i+1))),min(Iint(1:(i+1))));
+        up=ylim_curr(2);
+        down=0;
         plot(9*[1,1],[up,down],'--b');
     end
+    ylabel(slabel)
+    xlabel('days')
     
     subplot(2,4,6); hold on;
     title('Recovered'); hold on;
-    plot([0:i]/FPD,nR(1:(i+1)),'g-');
-    plot(tdays(1:i+1),Rint(1:i+1),'--g');
+    plot([0:i]/FPD,sf*nR(1:(i+1)),'g-');
+    plot(tdays(1:i+1),sf*Rint(1:i+1),'--g');
+    ylim_curr = get(gca,'ylim'); ylim([0 ylim_curr(2)]);
     if i>9*FPD
-        up=max(max(nR(1:(i+1))),max(Rint(1:(i+1))));
-        down=min(min(nR(1:(i+1))),min(Rint(1:(i+1))));
+        up=ylim_curr(2);
+        down=0;
         plot(9*[1,1],[up,down],'--b');
     end
+    ylabel(slabel)
+    xlabel('days')
     
     subplot(2,4,7); hold on;
     title('Deaths'); hold on;
-    plot([0:i]/FPD,nD(1:(i+1)),'k-');
-    plot(tdays(1:i+1),Dint(1:i+1),'--k');
+    plot([0:i]/FPD,sf*nD(1:(i+1)),'k-');
+    plot(tdays(1:i+1),sf*Dint(1:i+1),'--k');
+    ylim_curr = get(gca,'ylim'); ylim([0 ylim_curr(2)]);
     if i>9*FPD
-        up=max(max(nD(1:(i+1))),max(Dint(1:(i+1))));
-        down=min(min(nD(1:(i+1))),min(Dint(1:(i+1))));
+        up=ylim_curr(2);
+        down=0;
         plot(9*[1,1],[up,down],'--b');
     end
+    ylabel(slabel)
+    xlabel('days')
     
     subplot(2,4,8); hold on;
     title('Recover Ratio'); hold on;
     plot([0:i]/FPD,nR(1:(i+1))./(nR(1:(i+1))+nD(1:(i+1))),'-b');
     plot(tdays(1:i+1),Rint(1:(i+1))./(Rint(1:(i+1))+Dint(1:(i+1))),'--b');
-    
+    ylim([0 1])
+    xlabel('days')
     
     if mod(i,FPD)==0
         saveas(gcf,[spath,'/day_',num2str(i/FPD),'.png'])
