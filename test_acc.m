@@ -1,6 +1,6 @@
 % author: Giuseppe Giacopelli
-% pre-print: A FULL-SCALE AGENT-BASED MODEL OF LOMBARDY
-% COVID-19 OUTBREAK TO EXPLORE SOCIAL NETWORKS CONNECTIVITY
+% pre-print: A full-scale agent-based model of Lombardy COVID-19 dynamics 
+% to explore social networks connectivity and vaccine impact on epidemic
 % license: GPL-3.0
 
 close all
